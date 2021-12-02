@@ -27,7 +27,15 @@ int main(){
     }
     
     std::cout << "Task 1: " << count << std::endl;
-
+    unsigned int count2 = 0;
+    int x1,x2;
+    for(unsigned int j = 0; j < vec.size() -3; ++j){
+        x1 = vec[j] + vec[j+1] + vec[j+2];
+        x2 = vec[j+1] + vec[j+2] + vec[j+3];
+        count2 += x1 < x2;
+    }
+    std::cout << "Task 2: " << count2 << std::endl;
+   
     inFile.close();
     return 0;
 }
