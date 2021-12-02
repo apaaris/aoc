@@ -19,26 +19,26 @@ int main(){
 
     std::string order;
     unsigned int value;
-    unsigned int hor = 0, pos = 0;
+    unsigned int hor = 0, pos = 0, aim = 0;
 
     while (inFile >> order >> value){
         if(order == "forward"){
             hor += value;
+            pos += aim * value;
+            
         }
         if(order == "down"){
-            pos += value;
+            //pos += value;
+            aim += value;
         }
         if(order == "up"){
-            pos -= value;
+            //pos -= value;
+            aim -= value;
         }
     } 
-  // 
-    std::cout <<"Task1: " << hor * pos << std::endl; 
+    std::cout <<"Task2: " << hor * pos << std::endl; 
 
 
-
-
-  //  
     inFile.close();
     return 0;
 }
