@@ -36,7 +36,7 @@ while read line; do
     temp3=$line
     sum1=$sum2
 done < "$file"
-counter=$((counter1-3))
-echo "$counter"
+counter1=$((counter1-3))
+echo "$counter1"
 exit 1
 
