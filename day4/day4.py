@@ -1,5 +1,3 @@
-#Credits to 4HbQ
-
 import numpy as np
 n, *b = open("in.txt")                  
 
@@ -12,11 +10,10 @@ lst = []
 for n in tries:           
     np.place(m,b == n, True)
     win = (m.all(1) |  m.all(2)).any(1) 
-    print(win)
     if win.any():
-        lst.append((b * ~m)[win].sum() * n)
-        b = b[~win]
-        m = m[~win]
+        lst.append((b * np.invert(m))[win].sum() * n)
+        b = b[np.invert(win)]
+        m = m[np.invert(win)]
 
 print("Task 1: " + str(lst[0]))
 print("Task 2: " + str(lst[len(lst)-1]))
