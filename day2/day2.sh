@@ -20,8 +20,10 @@ while read order value; do
 	fi
 
 done < "in.txt"
-aim=0
 echo "Task 1: $((hor*depth))"
+hor=0
+aim=0
+depth=0
 while read order value; do
 	if [[ "$order" == "$f" ]]; 
 	then

@@ -5,9 +5,6 @@
 
 int main(){
 
-    int sum = 0;
-    int x;
-    //std::vector<string> vec(1000);
     std::ifstream inFile;
 
     inFile.open("in.txt");
