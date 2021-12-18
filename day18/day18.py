@@ -1,121 +1,115 @@
-import sys
-
-with open("in.txt") as f:
-    nums = f.read().splitlines()
-
-
-def parse(s, left):
-    if s[left] >= '0' and s[left] <= '9':
-        return Node(None, None, ord(s[left]) - ord('0')), left + 1
-    if s[left] == '[':
-        leftNode, newIndex = parse(s, left + 1)
-        rightNode, newIndex = parse(s, newIndex + 1)
-        return Node(leftNode, rightNode, None), newIndex + 1
-
-
-class Node(object):
-    def __init__(self, left, right, value):
-        self.left = left
-        self.right = right
-        self.value = value
-
-    def print(self):
-        if self.value is not None:
-            return str(self.value)
-        else:
-            return "[" + self.left.print() + "," + self.right.print() + "]"
-
-    def magnitude(self):
-        if self.value is not None:
-            return self.value
-        return self.left.magnitude() * 3 + self.right.magnitude() * 2
-
-    def reduce(self):
-        global lastValue
-        global toAdd
-        global exploded
-        # print("reducing", self.print())
-        while True:
-            exploded = False
-            lastValue = None
-            rec(self, 0)
-            if not exploded:
-                if not rec2(self):
-                    break
-                # print("split   ", self.print())
-            else:
-                # print("exploded", self.print())
-                pass
-        return self
-
-    def add(self, other):
-        res = Node(self, other, None)
-        res.reduce()
-        return res
+def parse_input(inp):  # Stores the numbers in the form (start, close, value, nests)
+    current_number = []
+    # start = number of open brackets before current number
+    # close = number of close brackets after previous number
+    # nests = total number of currently open brackets at current number
+    nests = start = close = 0
+    for char in range(len(inp)):
+        if inp[char] == "[":
+            start += 1
+            nests += 1
+        elif inp[char] == "]":
+            close += 1
+            nests -= 1
+        elif inp[char] != ",":
+            current_number.append((start, close, int(inp[char]), nests))
+            start = close = 0
+    current_number.append((0, close, 0, 0))
+    return current_number
 
 
-def rec(node, depth):
-    global lastValue
-    global toAdd
-    global exploded
-    if exploded:
-        if toAdd is None:
-            return
-        if node.value is None:
-            rec(node.left, depth + 1)
-            rec(node.right, depth + 1)
-        else:
-            node.value += toAdd
-            toAdd = None
-        return
-
-    if depth >= 4 and node.value is None:
-        if lastValue is not None:
-            lastValue.value += node.left.value
-        toAdd = node.right.value
-        node.left = node.right = None
-        node.value = 0
-        exploded = True
-        return
-    if node.value is None:
-        rec(node.left, depth + 1)
-        rec(node.right, depth + 1)
-    else:
-        lastValue = node
+def parse_number(num):  # Convert to array
+    string = ""
+    for i in range(len(num) - 1):
+        string += "[" * num[i][0] + str(num[i][2]) + "]" * num[i + 1][1] + ","
+    return string[:-1]
 
 
-def rec2(node):
-    if node.value is not None and node.value >= 10:
-        node.left = Node(None, None, node.value // 2)
-        node.right = Node(None, None, node.value - node.value // 2)
-        node.value = None
-        return True
-    if node.value is not None:
-        return False
-    if rec2(node.left):
-        return True
-    if rec2(node.right):
-        return True
+def explode(num, left, right):
+    if left > 0:  # Is not the left-most number
+        _ = num[left - 1]
+        num[left - 1] = (_[0], _[1], _[2] + num[left][2], _[3])  # Adds the value of pair's left value to previous num
+    if right < len(num) - 1:  # Is not the right-most number
+        _ = num[right + 1]
+        num[right + 1] = (_[0], _[1], _[2] + num[right][2], _[3])  # Adds the value of pair's right value to next num
+    _ = num[right + 1]
+    num[right + 1] = (_[0], _[1] - 1, _[2], _[3])  # Removes one closing bracket after pair's right value
+    if _[1] > 1:  # If pair being exploded is the right value of parent pair
+        num[right] = (0, 0, 0, num[right][3] - 1)
+        num.pop(left)  # pop pair's left value and set right value to 0, decrement nests by 1
+    else:  # If pair being exploded is the left value of parent pair
+        num[left] = (num[left][0] - 1, num[left][1], 0, num[right][3] - 1)  # set left value to 0,
+        num.pop(right)  # decrement nests by 1, removes one opening bracket from the pair's left value
+
+
+def split(num, index):
+    _ = num[index]
+    left = (_[0] + 1, _[1], _[2] // 2, _[3] + 1)  # floor division, adds 1 opening bracket for the new pair
+    right = (0, 0, -(-_[2] // 2), _[3] + 1)  # inverse floor (ceil) division
+    _ = num[index + 1]
+    num[index + 1] = (_[0], _[1] + 1, _[2], _[3])  # adds 1 closing bracket for closing the new pair
+    num[index] = right
+    num.insert(index, left)
+
+
+def check_explodes(num):
+    for i in range(len(num) - 1):
+        if num[i][3] > 4:  # nests greater than 4, i.e, explode
+            explode(num, i, i+1)
+            return True
     return False
 
 
-cur, discard = parse(nums[0], 0)
-print(cur.print())
-cur.reduce()
-for i in range(1, len(nums)):
-    other, discard = parse(nums[i], 0)
-    print(other.print())
-    cur = cur.add(other)
-    print(cur.print())
+def check_splits(num):
+    for i in range(len(num) - 1):
+        if num[i][2] > 9:  # value 10 or greater, i.e, split
+            split(num, i)
+            return True
+    return False
 
-print(cur.print(), cur.magnitude())
 
-maxMagnitude = 0
-for num1 in nums:
-    for num2 in nums:
-        if num1 == num2:
-            continue
-        x1, _ = parse(num1, 0)
-        x2, _ = parse(num2, 0)
-        maxMagnitude = max(maxMagnitude, x1.add(x2).magnitude())
-print(maxMagnitude)
+def reduce(num):
+    while check_explodes(num) or check_splits(num):
+        pass
+    return num
+
+
+def add_numbers(n1, n2):
+    n1, n2 = n1[:], n2[:]
+    n1[0] = (n1[0][0] + 1, n1[0][1], n1[0][2], n1[0][3])  # adds 1 opening bracket at the start
+    n2[0] = (n2[0][0], n1[-1][1], n2[0][2], n2[0][3])  # no. of closing brackets of the last value of first number
+    n2[-1] = (n2[-1][0], n2[-1][1] + 1, n2[-1][2], n2[0][3])  # adds 1 closing bracket at the end
+    for i in range(len(n1)-1):
+        n1[i] = (n1[i][0], n1[i][1], n1[i][2], n1[i][3] + 1)  # increments nest value for all numbers
+    for i in range(len(n2)-1):
+        n2[i] = (n2[i][0], n2[i][1], n2[i][2], n2[i][3] + 1)
+    added = n1[:-1] + n2
+    return reduce(added)
+
+
+numbers = []
+n = parse_input('in.txt')
+numbers.append(n[:])
+while inp := input():
+    inp = parse_input(inp)
+    n = add_numbers(n, inp)
+    numbers.append(inp[:])
+
+
+def magnitude(arr):
+    if type(arr) == int:
+        return arr
+    return 3 * magnitude(arr[0]) + 2 * magnitude(arr[1])
+
+
+print("Part 1:", magnitude(eval(parse_number(n))))
+
+max_mag = 0
+for j in numbers:
+    for k in numbers:
+        if j != k:
+            mag = magnitude(eval(parse_number(add_numbers(j, k))))
+            if mag > max_mag:
+                max_mag = mag
+
+print("Part 2:", max_mag)
