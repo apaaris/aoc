@@ -1,179 +1,115 @@
-#!/usr/bin/env python3
-
-from utils.all import *
-
-advent.setup(2021, 18)
-DEBUG = 'debug' in map(str.lower, sys.argv)
-if not DEBUG:
-	fin = advent.get_input()
-else:
-	fin = io.StringIO('''\
-[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]
-[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]
-[[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]
-[[[[2,4],7],[6,[0,5]]],[[[6,8],[2,8]],[[2,1],[4,5]]]]
-[7,[5,[[3,8],[1,4]]]]
-[[2,[2,2]],[8,[8,1]]]
-[2,9]
-[1,[[[9,3],9],[[9,0],[0,7]]]]
-[[[5,[7,4]],7],1]
-[[[[4,2],2],6],[8,7]]
-''')
-
-# eprint(*fin, sep='', end='----- end of input -----\n\n'); fin.seek(0, 0)
-timer_start()
-
-def replace_num(s, start, end, newnum):
-	return s[:start] + str(newnum) + s[end:]
-
-def add_num(s, start, end, toadd):
-	other = int(s[start:end])
-	return replace_num(s, start, end, other + toadd)
-
-def explode(s):
-	depth = 0
-
-	for i, c in enumerate(s):
-		if c == '[':
-			depth += 1
-
-			if depth == 5:
-				for j in range(i + 1, len(s)):
-					if not s[j].isdigit():
-						# print(i, j, s[j], s[i:])
-						assert s[j] == ','
-						assert s[j + 1].isdigit()
-						break
-
-				for k in range(j + 1, len(s)):
-					if not s[k].isdigit():
-						# print(i, j, s[j], s[i:])
-						assert s[k] == ']'
-						break
-
-				a = int(s[i + 1:j])
-				b = int(s[j + 1:k])
-				# print(a, b)
-
-				# replace pair with 0
-				# eprint('      ', s)
-				s = replace_num(s, i, k + 1, 0)
-				# eprint('ab->0 ', s)
-
-				# go left
-				for j in range(i - 1, -1, -1):
-					if s[j].isdigit():
-						break
-
-				if j != 0: # left number found
-					for k in range(j - 1, -1, -1):
-						if not s[k].isdigit():
-							break
-
-					# eprint(k, j, s[k:j])
-					s = add_num(s, k + 1, j + 1, a)
-					# eprint('left+ ', s)
-
-				# go right
-				for j in range(i + 2, len(s)):
-					if s[j].isdigit():
-						break
-
-				if j != len(s) - 1: # right number found
-					for k in range(j + 1, len(s)):
-						if not s[k].isdigit():
-							break
-
-					# eprint(j, k, s[j:k])
-					s = add_num(s, j, k, b)
-					# eprint('right+', s)
-
-				return s, True
-
-		elif c == ']':
-			depth -= 1
-
-	return s, False
-
-def split(s):
-	for i, c in enumerate(s):
-		if not c.isdigit():
-			continue
-
-		for j in range(i + 1, len(s)):
-			if not s[j].isdigit():
-				break
-
-		n = int(s[i:j])
-		if n >= 10:
-			a = n // 2
-			b = n - a
-
-			s = replace_num(s, i, j, f'[{a},{b}]')
-			return s, True
-
-	return s, False
-
-def redux(s):
-	ok = True
-	while ok:
-		s, ok = explode(s)
-		if ok:
-			# eprint('e', s)
-			continue
-
-		s, ok = split(s)
-		# if ok:
-			# eprint('s', s)
-
-	return s
-
-def magnitude(lst):
-	if type(lst) is int:
-		return lst
-
-	left, right = lst
-	return 3 * magnitude(left) + 2 * magnitude(right)
+def parse_input(inp):  # Stores the numbers in the form (start, close, value, nests)
+    current_number = []
+    # start = number of open brackets before current number
+    # close = number of close brackets after previous number
+    # nests = total number of currently open brackets at current number
+    nests = start = close = 0
+    for char in range(len(inp)):
+        if inp[char] == "[":
+            start += 1
+            nests += 1
+        elif inp[char] == "]":
+            close += 1
+            nests -= 1
+        elif inp[char] != ",":
+            current_number.append((start, close, int(inp[char]), nests))
+            start = close = 0
+    current_number.append((0, close, 0, 0))
+    return current_number
 
 
-res = next(fin).rstrip()
-
-for line in map(str.rstrip, fin):
-	# eprint(line)
-	res = f'[{res},{line}]'
-	# eprint(' ', res)
-
-	res = redux(res)
-
-	# break
-# explode('[[[[[9,8],1],2],3],4]')
-
-ans = magnitude(eval(res))
-
-advent.print_answer(1, ans)
-# wait('Submit? ')
-# advent.submit_answer(1, ans)
+def parse_number(num):  # Convert to array
+    string = ""
+    for i in range(len(num) - 1):
+        string += "[" * num[i][0] + str(num[i][2]) + "]" * num[i + 1][1] + ","
+    return string[:-1]
 
 
+def explode(num, left, right):
+    if left > 0:  # Is not the left-most number
+        _ = num[left - 1]
+        num[left - 1] = (_[0], _[1], _[2] + num[left][2], _[3])  # Adds the value of pair's left value to previous num
+    if right < len(num) - 1:  # Is not the right-most number
+        _ = num[right + 1]
+        num[right + 1] = (_[0], _[1], _[2] + num[right][2], _[3])  # Adds the value of pair's right value to next num
+    _ = num[right + 1]
+    num[right + 1] = (_[0], _[1] - 1, _[2], _[3])  # Removes one closing bracket after pair's right value
+    if _[1] > 1:  # If pair being exploded is the right value of parent pair
+        num[right] = (0, 0, 0, num[right][3] - 1)
+        num.pop(left)  # pop pair's left value and set right value to 0, decrement nests by 1
+    else:  # If pair being exploded is the left value of parent pair
+        num[left] = (num[left][0] - 1, num[left][1], 0, num[right][3] - 1)  # set left value to 0,
+        num.pop(right)  # decrement nests by 1, removes one opening bracket from the pair's left value
 
-fin.seek(0, 0)
-lsts = list(map(str.rstrip, fin))
 
-best = 0
-for a, b in product(lsts, lsts):
-	if a is b:
-		continue
+def split(num, index):
+    _ = num[index]
+    left = (_[0] + 1, _[1], _[2] // 2, _[3] + 1)  # floor division, adds 1 opening bracket for the new pair
+    right = (0, 0, -(-_[2] // 2), _[3] + 1)  # inverse floor (ceil) division
+    _ = num[index + 1]
+    num[index + 1] = (_[0], _[1] + 1, _[2], _[3])  # adds 1 closing bracket for closing the new pair
+    num[index] = right
+    num.insert(index, left)
 
-	m = magnitude(eval(redux(f'[{a},{b}]')))
-	if m > best:
-		best = m
 
-	m = magnitude(eval(redux(f'[{b},{a}]')))
-	if m > best:
-		best = m
+def check_explodes(num):
+    for i in range(len(num) - 1):
+        if num[i][3] > 4:  # nests greater than 4, i.e, explode
+            explode(num, i, i+1)
+            return True
+    return False
 
-ans = best
 
-advent.print_answer(2, ans)
-# wait('Submit? ')
-# advent.submit_answer(2, ans)
+def check_splits(num):
+    for i in range(len(num) - 1):
+        if num[i][2] > 9:  # value 10 or greater, i.e, split
+            split(num, i)
+            return True
+    return False
+
+
+def reduce(num):
+    while check_explodes(num) or check_splits(num):
+        pass
+    return num
+
+
+def add_numbers(n1, n2):
+    n1, n2 = n1[:], n2[:]
+    n1[0] = (n1[0][0] + 1, n1[0][1], n1[0][2], n1[0][3])  # adds 1 opening bracket at the start
+    n2[0] = (n2[0][0], n1[-1][1], n2[0][2], n2[0][3])  # no. of closing brackets of the last value of first number
+    n2[-1] = (n2[-1][0], n2[-1][1] + 1, n2[-1][2], n2[0][3])  # adds 1 closing bracket at the end
+    for i in range(len(n1)-1):
+        n1[i] = (n1[i][0], n1[i][1], n1[i][2], n1[i][3] + 1)  # increments nest value for all numbers
+    for i in range(len(n2)-1):
+        n2[i] = (n2[i][0], n2[i][1], n2[i][2], n2[i][3] + 1)
+    added = n1[:-1] + n2
+    return reduce(added)
+
+
+numbers = []
+n = parse_input('in.txt')
+numbers.append(n[:])
+while inp := input():
+    inp = parse_input(inp)
+    n = add_numbers(n, inp)
+    numbers.append(inp[:])
+
+
+def magnitude(arr):
+    if type(arr) == int:
+        return arr
+    return 3 * magnitude(arr[0]) + 2 * magnitude(arr[1])
+
+
+print("Part 1:", magnitude(eval(parse_number(n))))
+
+max_mag = 0
+for j in numbers:
+    for k in numbers:
+        if j != k:
+            mag = magnitude(eval(parse_number(add_numbers(j, k))))
+            if mag > max_mag:
+                max_mag = mag
+
+print("Part 2:", max_mag)
